@@ -1,28 +1,23 @@
 import { mode } from "viem/chains";
-import {
-  createPublicClient,
-  formatEther,
-  http,
-  parseEther,
-  type Hex,
-} from "viem";
+import { createPublicClient, formatEther, http, parseEther } from "viem";
 import { gaugeAbi } from "./gaugeAbi";
 import { writeFileSync } from "fs";
+
+const EPOCH = 1434n;
 
 const client = createPublicClient({
   chain: mode,
   transport: http(),
 });
 
-const totalVotingPowerInGauge = 228400527930115689345437907n;
-const ionToDistribute = parseEther("250000");
+const ionToDistribute = parseEther("300000");
 
 const logs = await client.getContractEvents({
   abi: gaugeAbi,
   address: "0x71439Ae82068E19ea90e4F506c74936aE170Cf58",
   fromBlock: 14405098n,
   eventName: "Voted",
-  args: { gauge: "0x8be11aBd61E07EF9d4551aCdd43bb390E3CE03Bd", epoch: 1432n },
+  args: { gauge: "0x8be11aBd61E07EF9d4551aCdd43bb390E3CE03Bd", epoch: EPOCH },
 });
 
 const desynLogs = await client.getContractEvents({
@@ -30,8 +25,13 @@ const desynLogs = await client.getContractEvents({
   address: "0x71439Ae82068E19ea90e4F506c74936aE170Cf58",
   fromBlock: 14405098n,
   eventName: "Voted",
-  args: { gauge: "0x78b7C35d2B8cdFf03971935832DDD2BBc54D8BD0", epoch: 1432n },
+  args: { gauge: "0x78b7C35d2B8cdFf03971935832DDD2BBc54D8BD0", epoch: EPOCH },
 });
+
+const totalVotingPowerInGauge = logs.reduce((acc, v) => {
+  return acc + (v.args.votingPowerCastForGauge ?? 0n);
+}, 0n);
+console.log("totalVotingPowerInGauge", totalVotingPowerInGauge);
 
 const votes = logs
   .map((l) => {
@@ -115,7 +115,7 @@ const csvData = votes
 const csvContent = csvHeader + csvData.join("\n");
 
 // Write to file
-writeFileSync("epoch3.csv", csvContent);
+writeFileSync(`epoch_${EPOCH}.csv`, csvContent);
 console.log("CSV file has been written successfully");
 
 const totalIonDistribution = votes.reduce((acc, v) => {
@@ -128,8 +128,13 @@ const desynCsvData = desynVotes
   .sort((a, b) => Number(a.ionDistribution) - Number(b.ionDistribution))
   .map((v) => [v.voter, v.ionDistribution, v.ionDistributionParsed]);
 const desynCsvContent = desynCsvHeader + desynCsvData.join("\n");
-writeFileSync("desyn_epoch3.csv", desynCsvContent);
+writeFileSync(`desyn_epoch_${EPOCH}.csv`, desynCsvContent);
 console.log("CSV file has been written successfully");
+
+const totalIonDistributionDesyn = desynVotes.reduce((acc, v) => {
+  return acc + v.ionDistribution;
+}, 0);
+console.log("totalIonDistributionDesyn", totalIonDistributionDesyn);
 
 const uniqueVoters = [...new Set(votes.map((v) => v.voter))];
 // pick 3 random voters
