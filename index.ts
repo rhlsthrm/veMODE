@@ -3,14 +3,14 @@ import { createPublicClient, formatEther, http, parseEther } from "viem";
 import { gaugeAbi } from "./gaugeAbi";
 import { writeFileSync } from "fs";
 
-const EPOCH = 1434n;
+const EPOCH = 1435n;
 
 const client = createPublicClient({
   chain: mode,
   transport: http(),
 });
 
-const ionToDistribute = parseEther("300000");
+const ionToDistribute = parseEther("450000");
 
 const logs = await client.getContractEvents({
   abi: gaugeAbi,
